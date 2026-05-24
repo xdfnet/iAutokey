@@ -17,3 +17,4 @@ build/
 # 环境/本地
 .env
 *.local.*
+iAutokey
