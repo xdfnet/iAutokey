@@ -15,6 +15,6 @@
     <key>StandardOutPath</key>
     <string>/Users/admin/.config/iautokey/iautokey.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/admin/.config/iautokey/iautokey.log</string>
+    <string>/Users/admin/.config/iautokey/iautokey_error.log</string>
 </dict>
 </plist>

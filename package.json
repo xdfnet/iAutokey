@@ -1,6 +1,6 @@
 {
   "name": "@xdfnet/iautokey",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "macOS auto-Enter tool \u2014 release a modifier key to simulate Enter, designed for voice input workflows",
   "license": "MIT",
   "homepage": "https://github.com/xdfnet/iAutokey#readme",

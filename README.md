@@ -47,16 +47,6 @@ npm 安装后自动配置 LaunchAgent。手动管理：
 launchctl load ~/Library/LaunchAgents/com.user.iautokey.plist
 ```
 
-## 从 iSpeak 迁移
-
-如果之前通过 iSpeak 使用 autoEnter 功能，配置会自动兼容读取（`~/.config/ispeak/config.json`）。
-
-建议将配置迁移到独立路径：
-
-```bash
-cp ~/.config/ispeak/config.json ~/.config/iautokey/config.json
-```
-
 ## 构建
 
 ```bash

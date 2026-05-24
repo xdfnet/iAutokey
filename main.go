@@ -47,6 +47,7 @@ func main() {
 
 	// 无参数 / 非命令参数 → 启动守护进程
 	log.SetFlags(log.Ltime | log.Lshortfile)
+	log.SetOutput(os.Stdout)
 
 	cfg, err := loadConfig()
 	if err != nil {
@@ -117,19 +118,8 @@ func pidFile() string {
 
 func loadConfig() (*config, error) {
 	usr, _ := user.Current()
-
-	// 本项目的独立配置
-	ownPath := filepath.Join(usr.HomeDir, ".config", "iautokey", "config.json")
-	if data, err := os.ReadFile(ownPath); err == nil {
-		var cfg config
-		if err := json.Unmarshal(data, &cfg); err == nil {
-			return &cfg, nil
-		}
-	}
-
-	// 兼容旧方案：读取 iSpeak 的配置
-	legacyPath := filepath.Join(usr.HomeDir, ".config", "ispeak", "config.json")
-	data, err := os.ReadFile(legacyPath)
+	path := filepath.Join(usr.HomeDir, ".config", "iautokey", "config.json")
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("未找到配置，请创建 ~/.config/iautokey/config.json")
 	}
