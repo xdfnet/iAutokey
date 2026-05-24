@@ -1,0 +1,19 @@
+# iAutokey 构建产物
+build/
+
+# macOS
+.DS_Store
+
+# Go
+*.test
+*.out
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 环境/本地
+.env
+*.local.*

@@ -1,30 +1,27 @@
+VERSION := $(shell grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' package.json | head -1 | sed 's/.*: *"\(.*\)"/\1/')
 SIGN_ID := 4A287668E97BC130AA6D19F4D64799394CAACBAD
-DST     := $$HOME/.local/bin/iAutokey
-PLIST   := $$HOME/Library/LaunchAgents/com.xdfnet.iAutokey.plist
 
-VERSION := $(shell git describe --tags --always 2>/dev/null || echo "dev")
-BIN     := build/iAutokey
+BIN   := build/iautokey
+DST   := $$HOME/.local/bin/iautokey
+PLIST := $$HOME/Library/LaunchAgents/com.user.iautokey.plist
 
-.PHONY: build install sign deploy plist help
+.PHONY: build test release clean help install sign deploy plist restart
 
 help:
-	@echo "iAutokey $(VERSION)"
+	@echo "iautokey $(VERSION)"
 	@echo ""
-	@echo "  make build       # 编译"
-	@echo "  make install     # 安装到 ~/.local/bin"
-	@echo "  make sign        # 签名（首次必须，之后仅重建时需重签）"
-	@echo "  make plist       # 安装 LaunchAgent（开机自启）"
-	@echo "  make deploy      # 编译+签名+安装+重启"
-	@echo "  make clean       # 清理"
-	@echo ""
-	@echo "首次使用:"
-	@echo "  1. make deploy"
-	@echo "  2. 去 系统设置→隐私与安全性→辅助功能 添加 iAutokey"
-	@echo "  3. make plist    # 配置开机自启"
+	@echo "  make build      # 编译"
+	@echo "  make install    # 安装到 ~/.local/bin"
+	@echo "  make sign       # Developer ID 签名"
+	@echo "  make deploy     # build + install + sign + restart"
+	@echo "  make plist      # 配置开机自启"
+	@echo "  make test       # 测试"
+	@echo "  make release    # 发布到 npm + git tag"
+	@echo "  make clean      # 清理"
 
 build:
 	@mkdir -p build
-	@go build -ldflags="-s -w" -o $(BIN) .
+	@go build -ldflags="-s -w -X main.version=$(VERSION)" -o $(BIN) .
 	@echo "编译完成: $(BIN)"
 
 install: build
@@ -34,22 +31,44 @@ install: build
 
 sign:
 	@codesign --remove-signature $(DST) 2>/dev/null; true
-	@codesign -s $(SIGN_ID) -f --identifier com.xdfnet.iAutokey $(DST)
+	@codesign -s $(SIGN_ID) -f --identifier com.user.iautokey $(DST)
 	@echo "已签名"
 
 deploy: install sign restart
 
-plist:
-	@cp configs/com.xdfnet.iAutokey.plist $(PLIST) 2>/dev/null || cp /dev/null $(PLIST)
-	@launchctl unload $(PLIST) 2>/dev/null; true
-	@launchctl load $(PLIST)
-	@echo "已配置开机自启"
-
 restart:
 	@launchctl unload $(PLIST) 2>/dev/null; true
 	@sleep 0.3
-	@launchctl load $(PLIST)
+	@launchctl load -w $(PLIST)
 	@echo "已重启"
+	@sleep 0.5
+	@$(BIN) status
+
+plist:
+	@mkdir -p $$HOME/.config/iautokey
+	@cp configs/com.user.iautokey.plist $(PLIST)
+	@launchctl unload $(PLIST) 2>/dev/null; true
+	@launchctl load -w $(PLIST)
+	@echo "已配置开机自启"
+
+test:
+	@go build ./...
+	@echo "ok"
+
+release: test
+	@if [ -n "$$(git status --porcelain)" ]; then \
+		echo "工作区不干净，请先提交"; \
+		git status --short; \
+		exit 1; \
+	fi
+	@if npm view @xdfnet/iautokey@$(VERSION) version >/dev/null 2>&1; then \
+		echo "npm 版本已存在: @xdfnet/iautokey@$(VERSION)"; \
+		exit 1; \
+	fi
+	git tag v$(VERSION)
+	git push origin HEAD
+	git push origin v$(VERSION)
+	npm publish --access public
 
 clean:
 	@rm -rf build

@@ -118,7 +118,7 @@ func startAutoEnter(keyName string, delayMs int) {
 	if tap == nil {
 		C.free(unsafe.Pointer(state))
 		runtime.UnlockOSThread()
-		log.Printf("创建 event tap 失败，请在 系统设置→隐私与安全性→辅助功能 中允许 iAutokey")
+		log.Printf("创建 event tap 失败，请在 系统设置→隐私与安全性→辅助功能 中允许 iautokey")
 		return
 	}
 

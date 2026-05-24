@@ -1,0 +1,31 @@
+{
+  "name": "@xdfnet/iautokey",
+  "version": "1.0.0",
+  "description": "macOS auto-Enter tool — release a modifier key to simulate Enter, designed for voice input workflows",
+  "license": "MIT",
+  "homepage": "https://github.com/xdfnet/iAutokey#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xdfnet/iAutokey.git"
+  },
+  "os": ["darwin"],
+  "cpu": ["arm64", "x64"],
+  "files": [
+    "main.go",
+    "autokey_darwin.go",
+    "go.mod",
+    "go.sum",
+    "Makefile",
+    "scripts/",
+    "configs/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "go build -ldflags=\"-s -w -X main.version=$(VERSION)\" -o build/iautokey .",
+    "test": "go test ./...",
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

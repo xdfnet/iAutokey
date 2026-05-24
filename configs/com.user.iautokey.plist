@@ -3,18 +3,18 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.xdfnet.iAutokey</string>
+    <string>com.user.iautokey</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/admin/.local/bin/iAutokey</string>
+        <string>/Users/admin/.local/bin/iautokey</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/tmp/iAutokey.log</string>
+    <string>/Users/admin/.config/iautokey/iautokey.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/iAutokey.log</string>
+    <string>/Users/admin/.config/iautokey/iautokey.log</string>
 </dict>
 </plist>
