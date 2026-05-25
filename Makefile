@@ -52,7 +52,7 @@ plist:
 	@echo "已配置开机自启"
 
 test:
-	@go build ./...
+	@go test ./...
 	@echo "ok"
 
 release: test

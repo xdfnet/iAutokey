@@ -6,15 +6,15 @@
     <string>com.user.iautokey</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/admin/.local/bin/iautokey</string>
+        <string>BINARY_PATH_PLACEHOLDER</string>
     </array>
     <key>RunAtLoad</key>
     <true/>
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/Users/admin/.config/iautokey/iautokey.log</string>
+    <string>CONFIG_DIR_PLACEHOLDER/iautokey.log</string>
     <key>StandardErrorPath</key>
-    <string>/Users/admin/.config/iautokey/iautokey_error.log</string>
+    <string>CONFIG_DIR_PLACEHOLDER/iautokey_error.log</string>
 </dict>
 </plist>

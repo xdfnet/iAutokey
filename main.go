@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 )
 
 var version = "dev"
@@ -83,12 +84,123 @@ func cmdStatus() {
 }
 
 func cmdRestart() {
-	home, _ := os.UserHomeDir()
-	plist := filepath.Join(home, "Library", "LaunchAgents", "com.user.iautokey.plist")
+	plist := plistPath()
+	ensurePlist()
 	execCmd("launchctl", "unload", plist)
 	execCmd("launchctl", "load", "-w", plist)
-	fmt.Println("iautokey: 已重启")
+	if err := waitForHealth(); err != nil {
+		fmt.Fprintln(os.Stderr, "⚠️  服务已重启但进程未启动，请检查日志")
+		fmt.Fprintf(os.Stderr, "  ~/.config/iautokey/iautokey_error.log\n")
+		os.Exit(1)
+	}
+	fmt.Println("✅ iautokey 已重启")
 }
+func cmdSetup() {
+	if err := ensureConfig(); err != nil {
+		fmt.Fprintf(os.Stderr, "setup 失败: %v\n", err)
+		os.Exit(1)
+	}
+	if err := ensurePlist(); err != nil {
+		fmt.Fprintf(os.Stderr, "plist 写入失败: %v\n", err)
+		os.Exit(1)
+	}
+	plist := plistPath()
+	execCmd("launchctl", "unload", plist)
+	execCmd("launchctl", "load", "-w", plist)
+
+	if err := waitForHealth(); err != nil {
+		fmt.Fprintf(os.Stderr, "⚠️  服务启动中，请检查日志\n")
+	} else {
+		fmt.Println("✅ iautokey 服务已启动")
+	}
+}
+
+func cmdUpdate() {
+	fmt.Println("正在检查更新...")
+	cmd := exec.Command("npm", "install", "-g", "@xdfnet/iautokey")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "npm install 失败: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("✅ 二进制已更新")
+	cmdRestart()
+}
+
+func ensureConfig() error {
+	usr, _ := user.Current()
+	dir := filepath.Join(usr.HomeDir, ".config", "iautokey")
+	path := filepath.Join(dir, "config.json")
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	}
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	cfg := map[string]any{
+		"autoEnter": map[string]any{
+			"enabled": true,
+			"key":     "right_command",
+			"delayMs": 600,
+		},
+	}
+	data, _ := json.MarshalIndent(cfg, "", "  ")
+	if err := os.WriteFile(path, append(data, '\n'), 0o600); err != nil {
+		return err
+	}
+	fmt.Println("✅ 配置文件已创建:", path)
+	return nil
+}
+
+func ensurePlist() error {
+	usr, _ := user.Current()
+	configDir := filepath.Join(usr.HomeDir, ".config", "iautokey")
+	plist := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.iautokey</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>%s</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>%s/iautokey.log</string>
+    <key>StandardErrorPath</key>
+    <string>%s/iautokey_error.log</string>
+</dict>
+</plist>
+`, binaryPath(), configDir, configDir)
+	return os.WriteFile(plistPath(), []byte(plist), 0o600)
+}
+
+func binaryPath() string {
+	usr, _ := user.Current()
+	return filepath.Join(usr.HomeDir, ".local", "bin", "iautokey")
+}
+
+func plistPath() string {
+	usr, _ := user.Current()
+	return filepath.Join(usr.HomeDir, "Library", "LaunchAgents", "com.user.iautokey.plist")
+}
+
+func waitForHealth() error {
+	for range 30 {
+		out, err := exec.Command("pgrep", "-f", "iautokey").Output()
+		if err == nil && len(out) > 0 {
+			return nil
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+	return fmt.Errorf("health check timeout")
+}
+
 
 func cmdHelp() {
 	fmt.Print(`iautokey ` + version + ` — 修饰键释放后自动模拟 Enter
@@ -97,8 +209,10 @@ func cmdHelp() {
   iautokey                   启动守护进程
   iautokey status            服务状态
   iautokey restart           重启服务
-  iautokey version          版本号
-  iautokey help             帮助
+  iautokey update            升级到最新版
+  iautokey setup             首次安装：配置 + 开机自启
+  iautokey version           版本号
+  iautokey help              帮助
 
 配置: ~/.config/iautokey/config.json
 `)
