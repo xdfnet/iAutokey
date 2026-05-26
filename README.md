@@ -39,6 +39,13 @@ iautokey version       # 版本号
 
 首次使用需在 **系统设置 → 隐私与安全性 → 辅助功能** 中添加 `iautokey`。
 
+为减少升级后权限丢失，安装脚本会优先使用固定证书签名 `~/.local/bin/iautokey`。
+可通过环境变量覆盖签名证书：
+
+```bash
+IAUTOKEY_SIGN_ID="<你的证书指纹>" npm i -g @xdfnet/iautokey
+```
+
 ## 开机自启
 
 npm 安装后自动配置 LaunchAgent。手动管理：

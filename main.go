@@ -34,6 +34,12 @@ func main() {
 		case "status":
 			cmdStatus()
 			return
+		case "setup":
+			cmdSetup()
+			return
+		case "update":
+			cmdUpdate()
+			return
 		case "version", "-v", "--version":
 			fmt.Println("iautokey", version)
 			return
@@ -56,6 +62,10 @@ func main() {
 	}
 	if cfg.AutoEnter == nil || !cfg.AutoEnter.Enabled || cfg.AutoEnter.Key == "" {
 		log.Printf("未启用，退出")
+		return
+	}
+	if !hasAccessibilityPermission() {
+		log.Printf("未授予辅助功能权限。请在 系统设置→隐私与安全性→辅助功能 中允许 iautokey，然后执行 iautokey restart")
 		return
 	}
 
@@ -85,9 +95,23 @@ func cmdStatus() {
 
 func cmdRestart() {
 	plist := plistPath()
-	ensurePlist()
-	execCmd("launchctl", "bootstrap", fmt.Sprintf("gui/%d", os.Getuid()), plist)
-	execCmd("launchctl", "kickstart", "-k", fmt.Sprintf("gui/%d/com.user.iautokey", os.Getuid()))
+	_ = exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/com.user.iautokey", os.Getuid())).Run()
+	if err := ensurePlist(); err != nil {
+		fmt.Fprintf(os.Stderr, "plist 写入失败: %v\n", err)
+		os.Exit(1)
+	}
+	if err := execCmd("launchctl", "bootstrap", fmt.Sprintf("gui/%d", os.Getuid()), plist); err != nil {
+		fmt.Fprintf(os.Stderr, "bootstrap 失败: %v\n", err)
+		os.Exit(1)
+	}
+	if err := execCmd("launchctl", "kickstart", "-k", fmt.Sprintf("gui/%d/com.user.iautokey", os.Getuid())); err != nil {
+		fmt.Fprintf(os.Stderr, "kickstart 失败: %v\n", err)
+		os.Exit(1)
+	}
+	if !hasAccessibilityPermission() {
+		fmt.Println("⚠️  尚未授予辅助功能权限，已跳过健康检查。授权后执行: iautokey restart")
+		return
+	}
 	if err := waitForHealth(); err != nil {
 		fmt.Fprintln(os.Stderr, "⚠️  服务已重启但进程未启动，请检查日志")
 		fmt.Fprintf(os.Stderr, "  ~/.config/iautokey/iautokey_error.log\n")
@@ -109,8 +133,19 @@ func cmdSetup() {
 		os.Exit(1)
 	}
 	plist := plistPath()
-	execCmd("launchctl", "bootstrap", fmt.Sprintf("gui/%d", os.Getuid()), plist)
-	execCmd("launchctl", "kickstart", "-k", fmt.Sprintf("gui/%d/com.user.iautokey", os.Getuid()))
+	_ = exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/com.user.iautokey", os.Getuid())).Run()
+	if err := execCmd("launchctl", "bootstrap", fmt.Sprintf("gui/%d", os.Getuid()), plist); err != nil {
+		fmt.Fprintf(os.Stderr, "bootstrap 失败: %v\n", err)
+		os.Exit(1)
+	}
+	if err := execCmd("launchctl", "kickstart", "-k", fmt.Sprintf("gui/%d/com.user.iautokey", os.Getuid())); err != nil {
+		fmt.Fprintf(os.Stderr, "kickstart 失败: %v\n", err)
+		os.Exit(1)
+	}
+	if !hasAccessibilityPermission() {
+		fmt.Println("⚠️  尚未授予辅助功能权限。请先授权，再执行: iautokey restart")
+		return
+	}
 
 	if err := waitForHealth(); err != nil {
 		fmt.Fprintf(os.Stderr, "⚠️  服务启动中，请检查日志\n")
@@ -129,6 +164,17 @@ func cmdUpdate() {
 		os.Exit(1)
 	}
 	fmt.Println("✅ 二进制已更新")
+	if !hasAccessibilityPermission() {
+		fmt.Println("⚠️  检测到尚未授予辅助功能权限，正在打开系统设置...")
+		openAccessibilitySettings()
+		fmt.Println("请在系统设置中允许 iautokey，已为你等待授权（最多 60 秒）...")
+		if waitForAccessibilityPermission(60 * time.Second) {
+			fmt.Println("✅ 已检测到权限授权，正在自动重启服务...")
+		} else {
+			fmt.Println("⚠️  未检测到授权完成。你授权后执行一次: iautokey restart")
+			return
+		}
+	}
 	cmdRestart()
 }
 
@@ -205,6 +251,21 @@ func waitForHealth() error {
 	return fmt.Errorf("health check timeout")
 }
 
+func openAccessibilitySettings() {
+	_ = exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility").Run()
+}
+
+func waitForAccessibilityPermission(timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if hasAccessibilityPermission() {
+			return true
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+	return false
+}
+
 
 func cmdHelp() {
 	fmt.Print(`iautokey ` + version + ` — 修饰键释放后自动模拟 Enter
@@ -222,11 +283,11 @@ func cmdHelp() {
 `)
 }
 
-func execCmd(name string, args ...string) {
+func execCmd(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Run()
+	return cmd.Run()
 }
 
 func pidFile() string {

@@ -65,6 +65,10 @@ import (
 	"unsafe"
 )
 
+func hasAccessibilityPermission() bool {
+	return C.AXIsProcessTrusted() != 0
+}
+
 var keyMap = map[string]struct {
 	keyCode  int64
 	flagMask C.CGEventFlags
