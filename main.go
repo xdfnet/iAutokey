@@ -86,11 +86,15 @@ func cmdStatus() {
 func cmdRestart() {
 	plist := plistPath()
 	ensurePlist()
-	execCmd("launchctl", "unload", plist)
-	execCmd("launchctl", "load", "-w", plist)
+	execCmd("launchctl", "bootstrap", fmt.Sprintf("gui/%d", os.Getuid()), plist)
+	execCmd("launchctl", "kickstart", "-k", fmt.Sprintf("gui/%d/com.user.iautokey", os.Getuid()))
 	if err := waitForHealth(); err != nil {
 		fmt.Fprintln(os.Stderr, "⚠️  服务已重启但进程未启动，请检查日志")
 		fmt.Fprintf(os.Stderr, "  ~/.config/iautokey/iautokey_error.log\n")
+		printCmd := exec.Command("launchctl", "print", fmt.Sprintf("gui/%d/com.user.iautokey", os.Getuid()))
+		printCmd.Stdout = os.Stderr
+		printCmd.Stderr = os.Stderr
+		_ = printCmd.Run()
 		os.Exit(1)
 	}
 	fmt.Println("✅ iautokey 已重启")
@@ -105,8 +109,8 @@ func cmdSetup() {
 		os.Exit(1)
 	}
 	plist := plistPath()
-	execCmd("launchctl", "unload", plist)
-	execCmd("launchctl", "load", "-w", plist)
+	execCmd("launchctl", "bootstrap", fmt.Sprintf("gui/%d", os.Getuid()), plist)
+	execCmd("launchctl", "kickstart", "-k", fmt.Sprintf("gui/%d/com.user.iautokey", os.Getuid()))
 
 	if err := waitForHealth(); err != nil {
 		fmt.Fprintf(os.Stderr, "⚠️  服务启动中，请检查日志\n")
